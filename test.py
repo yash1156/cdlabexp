@@ -1,58 +1,54 @@
-class PredictiveParser:
-    def __init__(self, input_str):
-        self.input_str = input_str
-        self.index = 0
+#Some helper functions
+def print_iter(Matched,Stack,Input,Action,verbose=True):
+    if verbose==True:
+        print(".".join(Matched).ljust(30)," | ",".".join(Stack).ljust(25)," | ",".".join(Input).ljust(30)," | ",Action)
+#The predictive parsing algorithm
+def predictive_parsing(sentence,parsingtable,terminals,start_state="S",verbose=True):      #Set verbose to false to not see the stages of the algorithm
+    status = None
+    match = []
+    stack = [start_state,"$"]
+    Inp = sentence.split(".")
+    if verbose==True:
+        print_iter(["Matched"],["Stack"],["Input"],"Action")
+    print_iter(match,stack,Inp,"Initial",verbose)
+    action=[]
+    while(len(sentence)>0 and status!=False):
+        top_of_input = Inp[0]
+        pos = top_of_input
+        if stack[0] =="$" and pos == "$" :
+            print_iter(match,stack,Inp,"Accepted",verbose)
+            return "Accepted"
+        if stack[0] == pos:
+            print_iter(match,stack,Inp,"Pop",verbose)
+            match.append(stack[0])
+            del(stack[0])
+            del(Inp[0])
+            continue
+        if stack[0]=="epsilon":
+            print_iter(match,stack,Inp,"Poping Epsilon",verbose)
+            del(stack[0])
+            continue
+        try:
+            production=parsingtable[stack[0]][pos]
+            print_iter(match,stack,Inp,stack[0]+" -> "+production,verbose)
+        except:
+            return "error for "+str(stack[0])+" on "+str(pos),"Not Accepted"
 
-    def match(self, expected_token):
-        if self.index < len(self.input_str) and self.input_str[self.index] == expected_token:
-            self.index += 1
-        else:
-            raise Exception(f"Error: Expected {expected_token}, found {self.input_str[self.index]}")
+        new = production.split(".")   
+        stack=new+stack[1:]
+    return "Not Accepted"
 
-    def E(self):
-        self.T()
-        self.E_prime()
-
-    def E_prime(self):
-        if self.index < len(self.input_str) and self.input_str[self.index] == '+':
-            self.match('+')
-            self.T()
-            self.E_prime()
-
-    def T(self):
-        self.F()
-        self.T_prime()
-
-    def T_prime(self):
-        if self.index < len(self.input_str) and self.input_str[self.index] == '*':
-            self.match('*')
-            self.F()
-            self.T_prime()
-
-    def F(self):
-     if self.index < len(self.input_str) and self.input_str[self.index] == '(':
-        self.match('(')
-        self.E()
-        self.match(')')
-     elif self.index < len(self.input_str) and self.input_str[self.index].isalpha():
-        while self.index < len(self.input_str) and (self.input_str[self.index].isalpha() or self.input_str[self.index].isdigit()):
-            self.index += 1
-     else:
-        raise Exception("Error: Invalid expression")
-
-
-    def parse(self):
-     try:
-        self.E()
-        if self.index == len(self.input_str):
-            print("Parsing successful.")
-        else:
-            raise Exception(f"Error: Incomplete expression at position {self.index}")
-     except Exception as e:
-        print(e)
-
-
-# Example usage
-input_expression = "id + id * id"
-parser = PredictiveParser(input_expression)
-parser.parse()
+if __name__=="__main__":
+    #Example for the working of the predictive parsing :-
+    #input for the grammar : E->TE1;E1->+TE1|epsilon;T->FT1 ...
+    parsingtable = {
+    "E" : {"id" : "T.E1", "(" : "T.E1"},
+    "E1" : {"+":"+.T.E1", ")":"epsilon", "$" : "epsilon"},
+    "T" : {"id" : "F.T1", "(" : "F.T1" },
+    "T1" : {"+" : "epsilon", "*" : "*.F.T1", ")" : "epsilon", "$" : "epsilon"},
+    "F":{"id":"id","(":"(.E.)"}
+    }
+    terminals = ["id","(",")","+","*"]
+    print(predictive_parsing(sentence="id.+.(.id.+.id.).$",parsingtable=parsingtable,terminals=terminals,start_state="E",verbose=True))
+    #Another Example done in class:-
+    print(predictive_parsing(sentence="c.c.c.c.d.d.$",parsingtable={"S" : {"c":"C.C","d":"C.C"},"C":{"c":"c.C","d":"d"}},terminals=["c,d"],start_state="S"))
